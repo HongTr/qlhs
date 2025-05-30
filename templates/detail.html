@@ -9,13 +9,17 @@
 
     <div class="action-buttons">
         <div class="btn-group">
-            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
-                <i>✏️</i>
-                Sửa thông tin
+            <a href="{{ url_for('index') }}" class="btn btn-back">
+                <i>⬅️</i>
+                Quay lại
             </a>
             <a href="{{ url_for('tuition_calendar', id=student.id) }}" class="btn btn-tuition">
                 <i>💰</i>
                 Quản lý học phí
+            </a>
+            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
+                <i>✏️</i>
+                Sửa thông tin
             </a>
         </div>
     </div>
@@ -68,10 +72,6 @@
     </div>
 
     <div class="bottom-actions">
-        <a href="{{ url_for('index') }}" class="btn btn-back" style="margin-top: 0px;">
-            <i>⬅️</i>
-            Quay lại
-        </a>
         <form action="{{ url_for('delete_student', id=student.id) }}" 
               method="POST" 
               onsubmit="return confirm('Bạn có chắc chắn muốn xóa học sinh này?')"
@@ -113,7 +113,8 @@
 }
 
 .btn-group:first-child .btn {
-    width: 140px;
+    width: auto;
+    min-width: 120px;
 }
 
 .btn-group:last-child {

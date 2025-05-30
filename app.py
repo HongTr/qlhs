@@ -138,22 +138,26 @@ def edit_student(id):
     return render_template('edit.html', student=student, grades=get_all_grades())
 
 @app.route('/student/<int:id>/tuition')
-def tuition_calendar(id):
+@app.route('/student/<int:id>/tuition/<int:year>')
+def tuition_calendar(id, year=None):
     student = Student.query.get_or_404(id)
-    current_year = datetime.now().year
     
-    # Lấy tất cả các khoản thanh toán của học sinh trong năm hiện tại
+    # Nếu không có năm được chọn, lấy năm hiện tại
+    if year is None:
+        year = datetime.now().year
+    
+    # Lấy tất cả các khoản thanh toán của học sinh trong năm được chọn
     payments = TuitionPayment.query.filter_by(
         student_id=id,
-        year=current_year
+        year=year
     ).all()
     
     # Tạo dictionary để dễ dàng kiểm tra tháng nào đã nộp
     paid_months = {payment.month: payment for payment in payments}
     
     return render_template('tuition_calendar.html', 
-                         student=student, 
-                         current_year=current_year,
+                         student=student,
+                         current_year=year,
                          paid_months=paid_months)
 
 @app.route('/student/<int:id>/tuition/toggle', methods=['POST'])
@@ -164,6 +168,19 @@ def toggle_tuition_payment(id):
         year = int(data.get('year'))
         amount = float(data.get('amount', 0))
         note = data.get('note', '')
+
+        # Validate input
+        if not all([isinstance(month, int), isinstance(year, int)]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Tháng và năm không hợp lệ'
+            }), 400
+
+        if amount < 0:
+            return jsonify({
+                'status': 'error',
+                'message': 'Số tiền không thể âm'
+            }), 400
 
         student = Student.query.get_or_404(id)
         payment = TuitionPayment.query.filter_by(
@@ -188,19 +205,47 @@ def toggle_tuition_payment(id):
                     month=month,
                     year=year,
                     amount=amount,
-                    note=note
+                    note=note,
+                    paid_date=datetime.utcnow()
                 )
                 db.session.add(payment)
                 message = 'Đã thêm thông tin thanh toán'
             else:
-                return jsonify({'status': 'error', 'message': 'Vui lòng nhập số tiền'})
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Vui lòng nhập số tiền'
+                }), 400
 
         db.session.commit()
-        return jsonify({'status': 'success', 'message': message})
+        
+        # Return detailed payment info for UI update
+        if amount > 0:
+            return jsonify({
+                'status': 'success',
+                'message': message,
+                'data': {
+                    'amount': "{:,.0f}".format(amount),
+                    'paid_date': datetime.utcnow().strftime('%d/%m/%Y'),
+                    'note': note
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'message': message
+            })
 
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': 'Dữ liệu không hợp lệ: ' + str(e)
+        }), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)})
+        return jsonify({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra: ' + str(e)
+        }), 500
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

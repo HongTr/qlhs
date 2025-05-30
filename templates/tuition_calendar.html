@@ -22,14 +22,26 @@
 
     <div class="calendar">
         <div class="calendar-header">
-            <h3>Năm học {{ current_year }} - {{ current_year + 1 }}</h3>
+            <div class="year-navigation">
+                <a href="{{ url_for('tuition_calendar', id=student.id, year=current_year-1) }}" 
+                   class="year-nav-btn">
+                    <i>⬅️</i>
+                    Năm trước
+                </a>
+                <span class="current-year">Năm {{ current_year }}</span>
+                <a href="{{ url_for('tuition_calendar', id=student.id, year=current_year+1) }}" 
+                   class="year-nav-btn">
+                    Năm sau
+                    <i>➡️</i>
+                </a>
+            </div>
         </div>
 
         <div class="months-grid">
             {% for month in range(1, 13) %}
             <div class="month-card {% if month in paid_months %}paid{% endif %}"
                  data-month="{{ month }}"
-                 data-year="{{ current_year if month >= 9 else current_year + 1 }}"
+                 data-year="{{ current_year }}"
                  onclick="handleMonthClick(this)">
                 <div class="month-header">Tháng {{ month }}</div>
                 <div class="payment-status">
@@ -151,6 +163,68 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 10px;
+}
+
+.year-navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.year-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    color: #4b5563;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    min-height: 44px;
+    font-size: 0.95rem;
+}
+
+.year-nav-btn:hover {
+    border-color: #4f46e5;
+    color: #4f46e5;
+    transform: translateX(-4px);
+}
+
+.year-nav-btn:last-child:hover {
+    transform: translateX(4px);
+}
+
+.current-year {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1f2937;
+    padding: 8px 24px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    min-width: 120px;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .year-navigation {
+        gap: 12px;
+    }
+    
+    .year-nav-btn {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .current-year {
+        font-size: 1.1rem;
+        padding: 8px 16px;
+    }
 }
 </style>
 
@@ -275,7 +349,9 @@ function updatePayment(month, year, amount = 0, note = '') {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            return response.json().then(data => {
+                throw new Error(data.message || 'Có lỗi xảy ra');
+            });
         }
         return response.json();
     })
@@ -288,14 +364,13 @@ function updatePayment(month, year, amount = 0, note = '') {
             if (amount > 0) {
                 // Cập nhật UI khi thêm/sửa thanh toán
                 monthCard.classList.add('paid');
-                const currentDate = new Date().toLocaleDateString('vi-VN');
                 paymentStatus.innerHTML = `
                     <i class="status-icon">✅</i>
                     <span class="status-text">Đã nộp</span>
                     <div class="payment-info">
-                        <span class="amount">${amount.toLocaleString('vi-VN')}đ</span>
-                        <span class="paid-date">${currentDate}</span>
-                        ${note ? `<span class="note">${note}</span>` : ''}
+                        <span class="amount">${data.data.amount}đ</span>
+                        <span class="paid-date">${data.data.paid_date}</span>
+                        ${data.data.note ? `<span class="note">${data.data.note}</span>` : ''}
                     </div>
                 `;
             } else {
@@ -308,11 +383,11 @@ function updatePayment(month, year, amount = 0, note = '') {
             }
             closePaymentModal();
         } else {
-            alert('Có lỗi xảy ra: ' + data.message);
+            throw new Error(data.message || 'Có lỗi xảy ra');
         }
     })
     .catch(error => {
-        alert('Có lỗi xảy ra khi cập nhật trạng thái thanh toán');
+        alert(error.message || 'Có lỗi xảy ra khi cập nhật trạng thái thanh toán');
         console.error('Error:', error);
     });
 }
