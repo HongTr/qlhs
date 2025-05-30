@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Quản lý học sinh{% endblock %}</title>
+
+    <!-- Link tới các file CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
+
+    <style>
+        .alert-success {
+            animation: fadeOut 0.5s ease 3s forwards;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🔷 Navbar -->
+<header class="navbar">
+  <div class="container flex justify-between items-center">
+    <h1 class="nav-logo">
+      <a href="{{ url_for('index') }}">📚 Quản lý học sinh</a>
+    </h1>
+    <nav class="nav-links">
+      <a href="{{ url_for('index') }}">🏠 Danh sách</a>
+      <a href="{{ url_for('add_student') }}">➕ Thêm học sinh</a>
+    </nav>
+  </div>
+</header>
+
+
+    <!-- 🔽 Main content -->
+    <main class="content">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="alert-success">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 🔻 Footer -->
+    <footer class="footer">
+        © {{ current_year | default(2025) }} Quản lý học sinh - Made by TMH with love
+    </footer>
+
+    <script>
+        // Tự động xóa flash messages sau 3.5 giây
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const flashMessages = document.querySelector('.flash-messages');
+                if (flashMessages) {
+                    flashMessages.remove();
+                }
+            }, 3500);
+        });
+    </script>
+</body>
+</html>

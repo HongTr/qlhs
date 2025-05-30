@@ -1,0 +1,326 @@
+{% extends 'layout.html' %}
+{% block title %}Quản lý học phí - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="tuition-page">
+    <div class="tuition-header">
+        <h2>
+            <i>💰</i>
+            Quản lý học phí: {{ student.name }}
+        </h2>
+        <div class="student-info">
+            <span><i>📚</i> Lớp {{ student.grade }}</span>
+            <span><i>🏫</i> {{ student.school }}</span>
+        </div>
+    </div>
+
+    <div class="calendar">
+        <div class="calendar-header">
+            <h3>Năm học {{ current_year }} - {{ current_year + 1 }}</h3>
+        </div>
+
+        <div class="months-grid">
+            {% for month in range(1, 13) %}
+            <div class="month-card {% if month in paid_months %}paid{% endif %}"
+                 data-month="{{ month }}"
+                 data-year="{{ current_year if month >= 9 else current_year + 1 }}"
+                 onclick="handleMonthClick(this)">
+                <div class="month-header">Tháng {{ month }}</div>
+                <div class="payment-status">
+                    {% if month in paid_months %}
+                        <i class="status-icon">✅</i>
+                        <span class="status-text">Đã nộp</span>
+                        <div class="payment-info">
+                            <span class="amount">{{ "{:,.0f}".format(paid_months[month].amount) }}đ</span>
+                            <span class="paid-date">{{ paid_months[month].paid_date.strftime('%d/%m/%Y') }}</span>
+                            {% if paid_months[month].note %}
+                            <span class="note">{{ paid_months[month].note }}</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <i class="status-icon">❌</i>
+                        <span class="status-text">Chưa nộp</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Modal nhập/sửa thông tin học phí -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <h3>
+                <i>💰</i>
+                <span id="modalTitle">Nhập thông tin học phí</span>
+            </h3>
+            <form id="paymentForm" onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <label for="amount">Số tiền</label>
+                    <div class="amount-input-wrapper">
+                        <input type="text" 
+                               id="amount" 
+                               name="amount" 
+                               required 
+                               pattern="[0-9,]*"
+                               oninput="formatAmount(this)"
+                               placeholder="Ví dụ: 1,000,000">
+                        <span class="currency-symbol">đ</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="note">Ghi chú</label>
+                    <textarea id="note" name="note" rows="3"></textarea>
+                </div>
+                <div class="payment-info-display">
+                    <p id="lastUpdated"></p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closePaymentModal()">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu thay đổi</button>
+                    <button type="button" id="deleteButton" class="btn-delete" onclick="showDeleteConfirm()" style="display: none;">Xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal xác nhận xóa -->
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 style="margin-bottom: 20px;">
+                <i>⚠️</i>
+                Xác nhận xóa
+            </h3>
+            <p>Bạn có chắc chắn muốn xóa thông tin học phí này?</p>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button type="button" class="btn-cancel" onclick="closeDeleteConfirm()">Hủy</button>
+                <button type="button" class="btn-delete" onclick="confirmDelete()">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ... existing styles ... */
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+.btn-cancel {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.btn-cancel:hover {
+    background-color: #5a6268;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+</style>
+
+<script>
+let selectedMonth = null;
+let selectedYear = null;
+let isEditing = false;
+
+function formatAmount(input) {
+    // Xóa tất cả ký tự không phải số
+    let value = input.value.replace(/[^0-9]/g, '');
+    
+    // Format số với dấu phẩy
+    if (value) {
+        value = parseInt(value).toLocaleString('en-US');
+    }
+    
+    input.value = value;
+}
+
+function handleMonthClick(monthElement) {
+    const month = monthElement.dataset.month;
+    const year = monthElement.dataset.year;
+    selectedMonth = month;
+    selectedYear = year;
+    
+    if (monthElement.classList.contains('paid')) {
+        // Nếu đã nộp, hiện modal với thông tin hiện tại
+        showEditModal(monthElement);
+    } else {
+        // Nếu chưa nộp, hiện modal nhập mới
+        showNewPaymentModal();
+    }
+}
+
+function showEditModal(monthElement) {
+    const modal = document.getElementById('paymentModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const amountInput = document.getElementById('amount');
+    const noteInput = document.getElementById('note');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const deleteButton = document.getElementById('deleteButton');
+    
+    modalTitle.textContent = `Sửa thông tin học phí - Tháng ${selectedMonth}`;
+    
+    // Lấy thông tin hiện tại từ card
+    const paymentInfo = monthElement.querySelector('.payment-info');
+    const amount = paymentInfo.querySelector('.amount').textContent.replace('đ', '').trim();
+    const note = paymentInfo.querySelector('.note')?.textContent || '';
+    const paidDate = paymentInfo.querySelector('.paid-date').textContent;
+    
+    amountInput.value = amount;
+    noteInput.value = note;
+    lastUpdated.textContent = `Cập nhật lần cuối: ${paidDate}`;
+    deleteButton.style.display = 'inline-block';
+    
+    isEditing = true;
+    modal.style.display = 'flex';
+}
+
+function showNewPaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const form = document.getElementById('paymentForm');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const deleteButton = document.getElementById('deleteButton');
+    
+    modalTitle.textContent = `Nhập thông tin học phí - Tháng ${selectedMonth}`;
+    form.reset();
+    lastUpdated.textContent = '';
+    deleteButton.style.display = 'none';
+    
+    isEditing = false;
+    modal.style.display = 'flex';
+    document.getElementById('amount').focus();
+}
+
+function closePaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    modal.style.display = 'none';
+    document.getElementById('paymentForm').reset();
+}
+
+function handleSubmit(e) {
+    e.preventDefault();
+    const amountStr = document.getElementById('amount').value;
+    const amount = parseFloat(amountStr.replace(/,/g, ''));
+    const note = document.getElementById('note').value;
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert('Vui lòng nhập số tiền hợp lệ');
+        return;
+    }
+    
+    updatePayment(selectedMonth, selectedYear, amount, note);
+    closePaymentModal();
+}
+
+function showDeleteConfirm() {
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    deleteModal.style.display = 'flex';
+}
+
+function closeDeleteConfirm() {
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    deleteModal.style.display = 'none';
+}
+
+function confirmDelete() {
+    updatePayment(selectedMonth, selectedYear);
+    closeDeleteConfirm();
+    closePaymentModal();
+}
+
+function updatePayment(month, year, amount = 0, note = '') {
+    fetch(`/student/{{ student.id }}/tuition/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ month, year, amount, note })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Tìm card tháng cần cập nhật
+            const monthCard = document.querySelector(`.month-card[data-month="${month}"][data-year="${year}"]`);
+            const paymentStatus = monthCard.querySelector('.payment-status');
+            
+            if (amount > 0) {
+                // Cập nhật UI khi thêm/sửa thanh toán
+                monthCard.classList.add('paid');
+                const currentDate = new Date().toLocaleDateString('vi-VN');
+                paymentStatus.innerHTML = `
+                    <i class="status-icon">✅</i>
+                    <span class="status-text">Đã nộp</span>
+                    <div class="payment-info">
+                        <span class="amount">${amount.toLocaleString('vi-VN')}đ</span>
+                        <span class="paid-date">${currentDate}</span>
+                        ${note ? `<span class="note">${note}</span>` : ''}
+                    </div>
+                `;
+            } else {
+                // Cập nhật UI khi xóa thanh toán
+                monthCard.classList.remove('paid');
+                paymentStatus.innerHTML = `
+                    <i class="status-icon">❌</i>
+                    <span class="status-text">Chưa nộp</span>
+                `;
+            }
+            closePaymentModal();
+        } else {
+            alert('Có lỗi xảy ra: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Có lỗi xảy ra khi cập nhật trạng thái thanh toán');
+        console.error('Error:', error);
+    });
+}
+
+// Đóng modal khi click ra ngoài
+window.onclick = function(event) {
+    const paymentModal = document.getElementById('paymentModal');
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    if (event.target == paymentModal) {
+        closePaymentModal();
+    }
+    if (event.target == deleteModal) {
+        closeDeleteConfirm();
+    }
+}
+</script>
+{% endblock %} 

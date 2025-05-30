@@ -1,0 +1,272 @@
+{% extends 'layout.html' %}
+{% block title %}Chi tiết học sinh - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="student-detail">
+    <div class="detail-header">
+        <h2>Thông tin học sinh</h2>
+    </div>
+
+    <div class="action-buttons">
+        <div class="btn-group">
+            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
+                <i>✏️</i>
+                Sửa thông tin
+            </a>
+            <a href="{{ url_for('tuition_calendar', id=student.id) }}" class="btn btn-tuition">
+                <i>💰</i>
+                Quản lý học phí
+            </a>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-group">
+            <label>Họ và tên:</label>
+            <span>{{ student.name }}</span>
+        </div>
+        <div class="info-group">
+            <label>Giới tính:</label>
+            <span>{{ student.gender }}</span>
+        </div>
+        <div class="info-group">
+            <label>Tuổi:</label>
+            <span>{{ student.age }}</span>
+        </div>
+        <div class="info-group">
+            <label>Lớp:</label>
+            <span>{{ student.grade }}</span>
+        </div>
+        <div class="info-group">
+            <label>Trường:</label>
+            <span>{{ student.school }}</span>
+        </div>
+        <div class="info-group">
+            <label>Địa chỉ:</label>
+            <span>{{ student.address }}</span>
+        </div>
+        <div class="info-group">
+            <label>Số điện thoại:</label>
+            <span>{{ student.phone }}</span>
+        </div>
+        <div class="info-group">
+            <label>Họ tên bố:</label>
+            <span>{{ student.father_name }}</span>
+        </div>
+        <div class="info-group">
+            <label>SĐT bố:</label>
+            <span>{{ student.father_phone }}</span>
+        </div>
+        <div class="info-group">
+            <label>Họ tên mẹ:</label>
+            <span>{{ student.mother_name }}</span>
+        </div>
+        <div class="info-group">
+            <label>SĐT mẹ:</label>
+            <span>{{ student.mother_phone }}</span>
+        </div>
+    </div>
+
+    <div class="bottom-actions">
+        <a href="{{ url_for('index') }}" class="btn btn-back" style="margin-top: 0px;">
+            <i>⬅️</i>
+            Quay lại
+        </a>
+        <form action="{{ url_for('delete_student', id=student.id) }}" 
+              method="POST" 
+              onsubmit="return confirm('Bạn có chắc chắn muốn xóa học sinh này?')"
+              class="delete-form">
+            <button type="submit" class="btn btn-delete">
+                <i>️</i>
+                <span>Xóa học sinh</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+.student-detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.detail-header {
+    margin-bottom: 20px;
+}
+
+.detail-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 24px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-group:first-child .btn {
+    width: 140px;
+}
+
+.btn-group:last-child {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+.btn i {
+    margin-right: 8px;
+    font-style: normal;
+    font-size: 18px;
+}
+
+.btn-back {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-back:hover {
+    background-color: #5a6268;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-edit {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-tuition {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-tuition:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    min-width: 160px;
+    margin: 0 auto;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.info-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-group label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.info-group span {
+    padding: 10px 12px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    color: #212529;
+    font-size: 15px;
+}
+
+.bottom-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.bottom-actions .btn,
+.bottom-actions .delete-form {
+    flex: 1;
+}
+
+.bottom-actions .btn {
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-form {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.delete-form button {
+    margin: 0;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .action-buttons {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .btn-group:first-child {
+        flex: 0 0 auto;
+    }
+
+    .btn-group:last-child {
+        flex: 1;
+    }
+}
+</style>
+{% endblock %}

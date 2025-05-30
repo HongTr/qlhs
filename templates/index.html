@@ -1,0 +1,157 @@
+{% extends 'layout.html' %}
+{% block title %}Danh sách học sinh{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i>📋</i>
+        Danh sách học sinh
+    </h1>
+
+    <div class="filter-section">
+        <div class="filter-group">
+            <label for="grade-filter" class="filter-label">Khối lớp:</label>
+            <select id="grade-filter" class="filter-select" onchange="applyFilters()">
+                <option value="">Tất cả</option>
+                {% for grade in grades %}
+                <option value="{{ grade }}" {% if selected_grade == grade|string %}selected{% endif %}>
+                    Lớp {{ grade }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="school-filter" class="filter-label">Trường học:</label>
+            <select id="school-filter" class="filter-select" onchange="applyFilters()">
+                <option value="">Tất cả</option>
+                {% for school in schools %}
+                <option value="{{ school }}" {% if selected_school == school %}selected{% endif %}>
+                    {{ school }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+{% if students %}
+    <ul class="student-list">
+        {% for student in students %}
+        <li>
+            <div class="student-info">
+                <a href="{{ url_for('student_detail', id=student.id) }}" class="student-name">
+                    {{ student.name }}
+                </a>
+                <div class="student-meta">
+                    <span><i>📚</i> Lớp {{ student.grade }}</span>
+                    <span><i>🏫</i> {{ student.school }}</span>
+                </div>
+            </div>
+            <button onclick="openDeleteModal({{ student.id }}, '{{ student.name }}')" class="delete-btn">
+                <i>🗑️</i> Xóa
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('index', page=pagination.prev_num, grade=selected_grade, school=selected_school) }}" class="page-btn">&laquo; Trước</a>
+        {% endif %}
+
+        {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                    <span class="page-btn active">{{ page_num }}</span>
+                {% else %}
+                    <a href="{{ url_for('index', page=page_num, grade=selected_grade, school=selected_school) }}" class="page-btn">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                <span class="page-dots">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+            <a href="{{ url_for('index', page=pagination.next_num, grade=selected_grade, school=selected_school) }}" class="page-btn">Sau &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% else %}
+    <p class="empty-message">
+        Chưa có học sinh nào
+        {% if selected_grade or selected_school %}
+            {% if selected_grade %}trong lớp {{ selected_grade }}{% endif %}
+            {% if selected_grade and selected_school %}và{% endif %}
+            {% if selected_school %}trường {{ selected_school }}{% endif %}
+        {% endif %}.
+    </p>
+{% endif %}
+
+<!-- Modal xác nhận xóa -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <h2>
+            <i>⚠️</i>
+            Xác nhận xóa
+        </h2>
+        <p>Bạn có chắc chắn muốn xóa học sinh <strong id="studentName"></strong>?</p>
+        <p class="modal-warning">Lưu ý: Hành động này không thể hoàn tác!</p>
+        <div class="modal-actions">
+            <form id="deleteForm" method="POST">
+                <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Hủy</button>
+                <button type="submit" class="btn-delete">Xóa</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const grade = document.getElementById('grade-filter').value;
+    const school = document.getElementById('school-filter').value;
+    const url = new URL(window.location);
+    
+    // Reset page number when applying new filters
+    url.searchParams.delete('page');
+    
+    if (grade) {
+        url.searchParams.set('grade', grade);
+    } else {
+        url.searchParams.delete('grade');
+    }
+    
+    if (school) {
+        url.searchParams.set('school', school);
+    } else {
+        url.searchParams.delete('school');
+    }
+    
+    window.location = url;
+}
+
+function openDeleteModal(studentId, studentName) {
+    const modal = document.getElementById('deleteModal');
+    const studentNameElement = document.getElementById('studentName');
+    const deleteForm = document.getElementById('deleteForm');
+    
+    studentNameElement.textContent = studentName;
+    deleteForm.action = '/delete/' + studentId;
+    modal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'none';
+}
+
+// Đóng modal khi click ra ngoài
+window.onclick = function(event) {
+    const modal = document.getElementById('deleteModal');
+    if (event.target == modal) {
+        closeDeleteModal();
+    }
+}
+</script>
+{% endblock %}
