@@ -4,10 +4,16 @@
 {% block content %}
 <div class="tuition-page">
     <div class="tuition-header">
-        <h2>
-            <i>💰</i>
-            Quản lý học phí: {{ student.name }}
-        </h2>
+        <div class="tuition-header-top">
+            <a href="{{ url_for('student_detail', id=student.id) }}" class="btn-back">
+                <i>⬅️</i>
+                Quay lại
+            </a>
+            <h2>
+                <i>💰</i>
+                Quản lý học phí: {{ student.name }}
+            </h2>
+        </div>
         <div class="student-info">
             <span><i>📚</i> Lớp {{ student.grade }}</span>
             <span><i>🏫</i> {{ student.school }}</span>
