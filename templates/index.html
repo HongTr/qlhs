@@ -4,10 +4,15 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
-        <i>📋</i>
+        <span class="icon">📋</span>
+        {% if show_graduated %}
+        Danh sách học sinh đã tốt nghiệp
+        {% else %}
         Danh sách học sinh
+        {% endif %}
     </h1>
 
+    {% if not show_graduated %}
     <div class="filter-section">
         <div class="filter-group">
             <label for="grade-filter" class="filter-label">Khối lớp:</label>
@@ -22,7 +27,7 @@
         </div>
 
         <div class="filter-group">
-            <label for="school-filter" class="filter-label">Trường học:</label>
+            <label for="school-filter" class="filter-label">Trường:</label>
             <select id="school-filter" class="filter-select" onchange="applyFilters()">
                 <option value="">Tất cả</option>
                 {% for school in schools %}
@@ -33,24 +38,48 @@
             </select>
         </div>
     </div>
+    {% endif %}
+
+    <div class="action-buttons">
+        {% if not show_graduated %}
+        <a href="{{ url_for('add_student') }}" class="btn btn-add">
+            <span class="icon">➕</span>
+            Thêm học sinh
+        </a>
+        <button onclick="promoteStudents()" class="btn btn-promote">
+            <span class="icon">⬆️</span>
+            Lên lớp
+        </button>
+        {% endif %}
+        <a href="{{ url_for('index', show_graduated='true' if not show_graduated else 'false') }}" class="btn btn-switch">
+            <span class="icon">🔄</span>
+            {% if show_graduated %}
+            Xem học sinh đang học
+            {% else %}
+            Xem học sinh đã tốt nghiệp
+            {% endif %}
+        </a>
+    </div>
 </div>
 
-{% if students %}
-    <ul class="student-list">
+<div class="student-list">
+    {% if students %}
+    <ul class="student-cards">
         {% for student in students %}
-        <li>
+        <li class="student-card">
             <div class="student-info">
-                <a href="{{ url_for('student_detail', id=student.id) }}" class="student-name">
-                    {{ student.name }}
+                <a href="{{ url_for('student_detail', id=student.id) }}" class="student-link">
+                    <div class="student-name">{{ student.name }}</div>
+                    <div class="student-meta">
+                        <span class="meta-item"><span class="icon">👤</span> {{ student.gender }}</span>
+                        <span class="meta-item"><span class="icon">📚</span> Lớp {{ student.grade }}</span>
+                        <span class="meta-item"><span class="icon">🏫</span> {{ student.school }}</span>
+                    </div>
                 </a>
-                <div class="student-meta">
-                    <span><i>📚</i> Lớp {{ student.grade }}</span>
-                    <span><i>🏫</i> {{ student.school }}</span>
-                </div>
             </div>
-            <button onclick="openDeleteModal({{ student.id }}, '{{ student.name }}')" class="delete-btn">
-                <i>🗑️</i> Xóa
-            </button>
+            {% if not show_graduated %}
+            <button onclick="openDeleteModal({{ student.id }}, '{{ student.name }}')" class="delete-btn" title="Xóa">×</button>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
@@ -58,7 +87,8 @@
     {% if pagination.pages > 1 %}
     <div class="pagination">
         {% if pagination.has_prev %}
-            <a href="{{ url_for('index', page=pagination.prev_num, grade=selected_grade, school=selected_school) }}" class="page-btn">&laquo; Trước</a>
+        <a href="{{ url_for('index', page=pagination.prev_num, grade=selected_grade, school=selected_school, show_graduated=show_graduated) }}" 
+           class="page-btn">&laquo; Trước</a>
         {% endif %}
 
         {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
@@ -66,7 +96,8 @@
                 {% if page_num == pagination.page %}
                     <span class="page-btn active">{{ page_num }}</span>
                 {% else %}
-                    <a href="{{ url_for('index', page=page_num, grade=selected_grade, school=selected_school) }}" class="page-btn">{{ page_num }}</a>
+                    <a href="{{ url_for('index', page=page_num, grade=selected_grade, school=selected_school, show_graduated=show_graduated) }}" 
+                       class="page-btn">{{ page_num }}</a>
                 {% endif %}
             {% else %}
                 <span class="page-dots">...</span>
@@ -74,20 +105,21 @@
         {% endfor %}
 
         {% if pagination.has_next %}
-            <a href="{{ url_for('index', page=pagination.next_num, grade=selected_grade, school=selected_school) }}" class="page-btn">Sau &raquo;</a>
+        <a href="{{ url_for('index', page=pagination.next_num, grade=selected_grade, school=selected_school, show_graduated=show_graduated) }}" 
+           class="page-btn">Sau &raquo;</a>
         {% endif %}
     </div>
     {% endif %}
-{% else %}
-    <p class="empty-message">
+    {% else %}
+    <div class="no-data">
+        {% if show_graduated %}
+        Chưa có học sinh nào tốt nghiệp
+        {% else %}
         Chưa có học sinh nào
-        {% if selected_grade or selected_school %}
-            {% if selected_grade %}trong lớp {{ selected_grade }}{% endif %}
-            {% if selected_grade and selected_school %}và{% endif %}
-            {% if selected_school %}trường {{ selected_school }}{% endif %}
-        {% endif %}.
-    </p>
-{% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 
 <!-- Modal xác nhận xóa -->
 <div id="deleteModal" class="modal">
@@ -111,24 +143,37 @@
 function applyFilters() {
     const grade = document.getElementById('grade-filter').value;
     const school = document.getElementById('school-filter').value;
-    const url = new URL(window.location);
     
-    // Reset page number when applying new filters
-    url.searchParams.delete('page');
+    let url = '{{ url_for("index") }}?';
+    if (grade) url += `grade=${grade}&`;
+    if (school) url += `school=${encodeURIComponent(school)}&`;
+    if ({{ show_graduated|tojson }}) url += 'show_graduated=true&';
     
-    if (grade) {
-        url.searchParams.set('grade', grade);
-    } else {
-        url.searchParams.delete('grade');
+    window.location.href = url.slice(0, -1);
+}
+
+function promoteStudents() {
+    if (!confirm('Bạn có chắc chắn muốn lên lớp cho tất cả học sinh?\nLưu ý: Chỉ có thể thực hiện vào tháng 5.')) {
+        return;
     }
     
-    if (school) {
-        url.searchParams.set('school', school);
-    } else {
-        url.searchParams.delete('school');
-    }
-    
-    window.location = url;
+    fetch('{{ url_for("promote_students") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.status === 'success') {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Có lỗi xảy ra khi thực hiện lên lớp!');
+    });
 }
 
 function openDeleteModal(studentId, studentName) {
@@ -154,4 +199,283 @@ window.onclick = function(event) {
     }
 }
 </script>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.filter-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-weight: 500;
+    color: #4b5563;
+}
+
+.filter-select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    min-width: 150px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn span.icon {
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.btn-add {
+    background-color: #4f46e5;
+    color: white;
+}
+
+.btn-add:hover {
+    background-color: #4338ca;
+}
+
+.btn-promote {
+    background-color: #059669;
+    color: white;
+    border: none;
+}
+
+.btn-promote:hover {
+    background-color: #047857;
+}
+
+.btn-switch {
+    background-color: #6b7280;
+    color: white;
+}
+
+.btn-switch:hover {
+    background-color: #4b5563;
+}
+
+.student-cards {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.student-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.student-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-link {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+}
+
+.student-name {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.student-meta {
+    display: flex;
+    gap: 1rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.delete-btn {
+    font-size: 24px;
+    font-weight: bold;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 8px;
+    transition: color 0.2s;
+}
+
+.delete-btn:hover {
+    color: #dc2626;
+}
+
+.pagination {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    color: #4b5563;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.page-btn:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.page-btn.active {
+    background-color: #4f46e5;
+    color: white;
+    border-color: #4f46e5;
+}
+
+.page-dots {
+    padding: 0.5rem;
+    color: #6b7280;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-content h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    color: #dc2626;
+}
+
+.modal-warning {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.modal-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.btn-cancel {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #4b5563;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.btn-delete {
+    padding: 0.5rem 1rem;
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+@media (min-width: 640px) {
+    .student-cards {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .student-cards {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .student-cards {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+</style>
 {% endblock %}

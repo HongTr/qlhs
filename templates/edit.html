@@ -1,110 +1,163 @@
 {% extends 'layout.html' %}
-{% block title %}Sửa thông tin học sinh{% endblock %}
+{% block title %}Sửa thông tin học sinh - {{ student.name }}{% endblock %}
 
 {% block content %}
-<div class="edit-form">
-    <h2>
-        <i>✏️</i>
-        Sửa thông tin học sinh
-    </h2>
+<!-- Thêm CSS của Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_blue.css">
 
-    <form method="POST" class="student-form">
+<div class="edit-student">
+    <div class="edit-header">
+        <h2>Sửa thông tin học sinh</h2>
+    </div>
+
+    <form action="{{ url_for('edit_student', id=student.id) }}" method="post" class="student-form" id="editStudentForm">
         <div class="form-grid">
-            <div class="form-section">
-                <h3>Thông tin cơ bản</h3>
-                
-                <div class="form-group">
-                    <label for="name">Họ và tên <span class="required">*</span></label>
-                    <input type="text" id="name" name="name" value="{{ student.name }}" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="gender">Giới tính <span class="required">*</span></label>
-                        <select id="gender" name="gender" required>
-                            <option value="Nam" {% if student.gender == 'Nam' %}selected{% endif %}>Nam</option>
-                            <option value="Nữ" {% if student.gender == 'Nữ' %}selected{% endif %}>Nữ</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="age">Tuổi <span class="required">*</span></label>
-                        <input type="number" id="age" name="age" value="{{ student.age }}" min="6" max="20" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="grade">Lớp <span class="required">*</span></label>
-                        <select id="grade" name="grade" required>
-                            {% for grade in grades %}
-                            <option value="{{ grade }}" {% if student.grade|int == grade %}selected{% endif %}>
-                                Lớp {{ grade }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="school">Trường <span class="required">*</span></label>
-                        <input type="text" id="school" name="school" value="{{ student.school }}" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="address">Địa chỉ</label>
-                    <input type="text" id="address" name="address" value="{{ student.address }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="phone">Số điện thoại</label>
-                    <input type="tel" id="phone" name="phone" value="{{ student.phone }}" 
-                           pattern="[0-9]{10}" title="Vui lòng nhập số điện thoại 10 số">
-                </div>
+            <div class="form-group">
+                <label for="name">Họ và tên</label>
+                <input type="text" id="name" name="name" value="{{ student.name }}" required>
             </div>
-
-            <div class="form-section">
-                <h3>Thông tin phụ huynh</h3>
-                
-                <div class="form-group">
-                    <label for="father_name">Họ tên bố</label>
-                    <input type="text" id="father_name" name="father_name" value="{{ student.father_name }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="father_phone">Số điện thoại bố</label>
-                    <input type="tel" id="father_phone" name="father_phone" value="{{ student.father_phone }}"
-                           pattern="[0-9]{10}" title="Vui lòng nhập số điện thoại 10 số">
-                </div>
-
-                <div class="form-group">
-                    <label for="mother_name">Họ tên mẹ</label>
-                    <input type="text" id="mother_name" name="mother_name" value="{{ student.mother_name }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="mother_phone">Số điện thoại mẹ</label>
-                    <input type="tel" id="mother_phone" name="mother_phone" value="{{ student.mother_phone }}"
-                           pattern="[0-9]{10}" title="Vui lòng nhập số điện thoại 10 số">
-                </div>
+            <div class="form-group">
+                <label for="gender">Giới tính</label>
+                <select id="gender" name="gender" required>
+                    <option value="Nam" {% if student.gender == 'Nam' %}selected{% endif %}>Nam</option>
+                    <option value="Nữ" {% if student.gender == 'Nữ' %}selected{% endif %}>Nữ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="age">Tuổi</label>
+                <input type="number" id="age" name="age" value="{{ student.age }}" required min="6" max="15" onchange="updateBirthYear()">
+            </div>
+            <div class="form-group">
+                <label for="birth_year">Năm sinh</label>
+                <input type="number" id="birth_year" name="birth_year" value="{{ student.birth_year }}" required readonly>
+            </div>
+            <div class="form-group">
+                <label for="grade">Lớp</label>
+                <select id="grade" name="grade" required>
+                    {% for grade in grades %}
+                    <option value="{{ grade }}" {% if student.grade|string == grade|string %}selected{% endif %}>
+                        Lớp {{ grade }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="school">Trường</label>
+                <input type="text" id="school" name="school" value="{{ student.school }}" required>
+            </div>
+            <div class="form-group">
+                <label for="start_date">Ngày bắt đầu học</label>
+                <input type="text" id="start_date_display" placeholder="dd/mm/yyyy" required>
+                <input type="hidden" id="start_date" name="start_date" value="{{ student.start_date.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="form-group">
+                <label for="address">Địa chỉ</label>
+                <input type="text" id="address" name="address" value="{{ student.address }}">
+            </div>
+            <div class="form-group">
+                <label for="phone">Số điện thoại học sinh</label>
+                <input type="text" id="phone" name="phone" value="{{ student.phone }}">
+            </div>
+            <div class="form-group">
+                <label for="father_name">Họ tên bố</label>
+                <input type="text" id="father_name" name="father_name" value="{{ student.father_name }}">
+            </div>
+            <div class="form-group">
+                <label for="father_phone">SĐT bố</label>
+                <input type="text" id="father_phone" name="father_phone" value="{{ student.father_phone }}">
+            </div>
+            <div class="form-group">
+                <label for="mother_name">Họ tên mẹ</label>
+                <input type="text" id="mother_name" name="mother_name" value="{{ student.mother_name }}">
+            </div>
+            <div class="form-group">
+                <label for="mother_phone">SĐT mẹ</label>
+                <input type="text" id="mother_phone" name="mother_phone" value="{{ student.mother_phone }}">
             </div>
         </div>
 
         <div class="form-actions">
-            <a href="{{ url_for('student_detail', id=student.id) }}" class="btn btn-back">
-                <i>⬅️</i>
+            <a href="{{ url_for('student_detail', id=student.id) }}" class="btn btn-cancel">
+                <span class="icon">⬅️</span>
                 Quay lại
             </a>
-            <button type="submit" class="btn btn-primary">
-                <i>💾</i>
+            <button type="submit" class="btn btn-save">
+                <span class="icon">💾</span>
                 Lưu thay đổi
             </button>
         </div>
     </form>
 </div>
 
+<!-- Thêm Flatpickr và ngôn ngữ tiếng Việt -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
+<script>
+// Cấu hình Flatpickr với tiếng Việt
+flatpickr("#start_date_display", {
+    dateFormat: "d/m/Y",
+    locale: "vn",
+    allowInput: true,
+    defaultDate: document.getElementById('start_date').value,
+    onChange: function(selectedDates, dateStr) {
+        // Chuyển đổi sang định dạng yyyy-mm-dd cho input ẩn
+        const date = selectedDates[0];
+        if (date) {
+            const isoDate = date.toISOString().split('T')[0];
+            document.getElementById('start_date').value = isoDate;
+        }
+    }
+});
+
+// Tự động tính năm sinh khi nhập tuổi
+function updateBirthYear() {
+    const age = document.getElementById('age').value;
+    if (age) {
+        const currentYear = new Date().getFullYear();
+        document.getElementById('birth_year').value = currentYear - age;
+    }
+}
+
+// Xử lý form submit
+document.getElementById('editStudentForm').addEventListener('submit', function(e) {
+    const startDate = document.getElementById('start_date').value;
+    if (!startDate) {
+        e.preventDefault();
+        alert('Vui lòng chọn ngày bắt đầu học');
+    }
+});
+</script>
+
 <style>
-.edit-form {
+/* Tùy chỉnh style cho date picker */
+.flatpickr-calendar {
+    font-size: 14px;
+}
+
+.flatpickr-current-month {
+    font-size: 16px;
+}
+
+.flatpickr-day {
+    border-radius: 4px;
+}
+
+.flatpickr-day.selected {
+    background: #4f46e5;
+    border-color: #4f46e5;
+}
+
+.flatpickr-day:hover {
+    background: #e5e7eb;
+}
+
+.flatpickr-day.today {
+    border-color: #4f46e5;
+}
+
+.edit-student {
     max-width: 800px;
     margin: 0 auto;
     padding: 24px;
@@ -113,7 +166,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.edit-form h2 {
+.edit-student h2 {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -134,31 +187,6 @@
     }
 }
 
-.form-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.form-section h3 {
-    color: #4b5563;
-    font-size: 18px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #f3f4f6;
-}
-
-.form-row {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-}
-
-@media (min-width: 640px) {
-    .form-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
 .form-group {
     display: flex;
     flex-direction: column;
@@ -169,11 +197,6 @@
     font-weight: 500;
     color: #4b5563;
     font-size: 14px;
-}
-
-.required {
-    color: #dc2626;
-    margin-left: 4px;
 }
 
 .form-group input,
@@ -218,28 +241,27 @@
     min-width: 120px;
 }
 
-.btn i {
-    font-style: normal;
-    font-size: 18px;
+.btn span.icon {
+    display: inline-block;
 }
 
-.btn-back {
+.btn-cancel {
     background-color: #6c757d;
     color: white;
 }
 
-.btn-back:hover {
+.btn-cancel:hover {
     background-color: #5a6268;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.btn-primary {
+.btn-save {
     background-color: #4f46e5;
     color: white;
 }
 
-.btn-primary:hover {
+.btn-save:hover {
     background-color: #4338ca;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

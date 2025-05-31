@@ -8,6 +8,7 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     gender = db.Column(db.String(10), nullable=False)
     age = db.Column(db.Integer, nullable=False)
+    birth_year = db.Column(db.Integer, nullable=False)  # Thêm trường năm sinh
     grade = db.Column(db.String(2), nullable=False)
     school = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200))
@@ -16,6 +17,10 @@ class Student(db.Model):
     father_phone = db.Column(db.String(15))
     mother_name = db.Column(db.String(100))
     mother_phone = db.Column(db.String(15))
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    graduated = db.Column(db.Boolean, default=False)  # Đánh dấu học sinh đã tốt nghiệp
+    last_grade_update = db.Column(db.DateTime)  # Thời điểm lên lớp gần nhất
     # Thêm relationship với TuitionPayment
     tuition_payments = db.relationship('TuitionPayment', backref='student', lazy=True, cascade="all, delete-orphan")
 

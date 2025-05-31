@@ -2,8 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from models import db, Student, TuitionPayment   # <-- import từ models.py
 import os
 from flask_migrate import Migrate
-from datetime import datetime
-from sqlalchemy import func, and_
+from datetime import datetime, timedelta
+from sqlalchemy import func, and_, extract, or_
 
 app = Flask(__name__, instance_relative_config=True)
 
@@ -30,6 +30,15 @@ def get_all_grades():
     """Trả về danh sách các lớp từ 1-9"""
     return list(range(1, 10))
 
+def get_school_type(grade):
+    """Trả về loại trường dựa vào khối lớp"""
+    grade = int(grade)
+    if 1 <= grade <= 5:
+        return "Tiểu học"
+    elif 6 <= grade <= 9:
+        return "THCS"
+    return ""
+
 @app.route('/')
 def index():
     # Lấy số trang từ query parameter, mặc định là trang 1
@@ -45,15 +54,20 @@ def index():
     # Lấy các tham số filter
     selected_grade = request.args.get('grade')
     selected_school = request.args.get('school')
+    show_graduated = request.args.get('show_graduated', 'false') == 'true'
     
     # Xây dựng query
     query = Student.query
     
     # Áp dụng các filter
-    if selected_grade and selected_grade.isdigit():
-        query = query.filter_by(grade=selected_grade)
-    if selected_school:
-        query = query.filter_by(school=selected_school)
+    if show_graduated:
+        query = query.filter(Student.graduated == True)
+    else:
+        query = query.filter(Student.graduated == False)
+        if selected_grade and selected_grade.isdigit():
+            query = query.filter_by(grade=selected_grade)
+        if selected_school:
+            query = query.filter_by(school=selected_school)
     
     # Thực hiện phân trang
     pagination = query.order_by(Student.name).paginate(
@@ -71,16 +85,21 @@ def index():
                          grades=all_grades,
                          schools=schools,
                          selected_grade=selected_grade,
-                         selected_school=selected_school)
+                         selected_school=selected_school,
+                         show_graduated=show_graduated,
+                         page=page,
+                         per_page=STUDENTS_PER_PAGE)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_student():
     if request.method == 'POST':
         # Lấy dữ liệu từ form
+        start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
         new_student = Student(
             name=request.form['name'],
             gender=request.form['gender'],
             age=request.form['age'],
+            birth_year=request.form['birth_year'],
             grade=request.form['grade'],
             school=request.form['school'],
             address=request.form['address'],
@@ -89,6 +108,8 @@ def add_student():
             father_phone=request.form['father_phone'],
             mother_name=request.form['mother_name'],
             mother_phone=request.form['mother_phone'],
+            created_at=datetime.now(),
+            start_date=start_date
         )
         db.session.add(new_student)
         db.session.commit()
@@ -119,6 +140,7 @@ def edit_student(id):
         student.name = request.form['name']
         student.gender = request.form['gender']
         student.age = request.form['age']
+        student.birth_year = request.form['birth_year']
         student.grade = request.form['grade']
         student.school = request.form['school']
         student.address = request.form['address']
@@ -127,6 +149,7 @@ def edit_student(id):
         student.father_phone = request.form['father_phone']
         student.mother_name = request.form['mother_name']
         student.mother_phone = request.form['mother_phone']
+        student.start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
         
         try:
             db.session.commit()
@@ -184,6 +207,15 @@ def toggle_tuition_payment(id):
             }), 400
 
         student = Student.query.get_or_404(id)
+        
+        # Kiểm tra xem tháng/năm có nằm trong khoảng thời gian học không
+        payment_date = datetime(year, month, 1)
+        if payment_date < student.start_date:
+            return jsonify({
+                'status': 'error',
+                'message': 'Không thể thanh toán cho thời gian trước khi học sinh bắt đầu học'
+            }), 400
+            
         payment = TuitionPayment.query.filter_by(
             student_id=id,
             month=month,
@@ -250,7 +282,7 @@ def toggle_tuition_payment(id):
 
 @app.route('/tuition-dashboard')
 def tuition_dashboard():
-    # Lấy năm từ query parameter, mặc định là năm hiện tại
+    # Lấy năm và tháng từ query parameter, mặc định là năm và tháng hiện tại
     year = request.args.get('year', datetime.now().year, type=int)
     month = request.args.get('month', datetime.now().month, type=int)
     
@@ -263,8 +295,11 @@ def tuition_dashboard():
     selected_grade = request.args.get('grade')
     selected_school = request.args.get('school')
     
+    # Tạo datetime object cho tháng được chọn
+    selected_date = datetime(year, month, 1)
+    
     # Query cơ bản cho học sinh
-    student_query = Student.query
+    student_query = Student.query.filter(Student.start_date <= selected_date)
     
     # Áp dụng các filter
     if selected_grade and selected_grade.isdigit():
@@ -294,20 +329,71 @@ def tuition_dashboard():
     total_amount = sum(payment.amount for payment in payments)
     
     return render_template('tuition_dashboard.html',
-                         year=year,
-                         month=month,
                          students=students,
                          payment_dict=payment_dict,
                          schools=schools,
                          grades=all_grades,
                          selected_grade=selected_grade,
                          selected_school=selected_school,
-                         stats={
-                             'total_students': total_students,
-                             'paid_students': paid_students,
-                             'unpaid_students': unpaid_students,
-                             'total_amount': total_amount
-                         })
+                         current_month=month,
+                         current_year=year,
+                         total_students=total_students,
+                         paid_students=paid_students,
+                         unpaid_students=unpaid_students,
+                         total_amount=total_amount)
+
+@app.route('/promote-students', methods=['POST'])
+def promote_students():
+    try:
+        # Lấy tất cả học sinh chưa tốt nghiệp
+        students = Student.query.filter_by(graduated=False).all()
+        current_date = datetime.now()
+        
+        # Kiểm tra xem có phải thời điểm lên lớp không (tháng 5)
+        if current_date.month != 5:
+            return jsonify({
+                'status': 'error',
+                'message': 'Chỉ có thể lên lớp vào tháng 5'
+            }), 400
+            
+        promoted_count = 0
+        graduated_count = 0
+        
+        for student in students:
+            # Kiểm tra xem học sinh đã được lên lớp trong năm nay chưa
+            if (student.last_grade_update and 
+                student.last_grade_update.year == current_date.year):
+                continue
+                
+            current_grade = int(student.grade)
+            
+            if current_grade == 9:
+                # Học sinh lớp 9 sẽ được đánh dấu là đã tốt nghiệp
+                student.graduated = True
+                graduated_count += 1
+            else:
+                # Các học sinh khác sẽ được lên một lớp
+                student.grade = str(current_grade + 1)
+                # Cập nhật trường học nếu chuyển cấp
+                if current_grade == 5:
+                    student.school = student.school.replace("Tiểu học", "THCS")
+                promoted_count += 1
+            
+            student.last_grade_update = current_date
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Đã lên lớp cho {promoted_count} học sinh và {graduated_count} học sinh tốt nghiệp'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': f'Có lỗi xảy ra: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

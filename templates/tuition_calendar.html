@@ -17,6 +17,7 @@
         <div class="student-info">
             <span><i>📚</i> Lớp {{ student.grade }}</span>
             <span><i>🏫</i> {{ student.school }}</span>
+            <span><i>📅</i> Ngày vào học: {{ student.start_date.strftime('%d/%m/%Y') }}</span>
         </div>
     </div>
 
@@ -39,368 +40,455 @@
 
         <div class="months-grid">
             {% for month in range(1, 13) %}
-            <div class="month-card {% if month in paid_months %}paid{% endif %}"
-                 data-month="{{ month }}"
-                 data-year="{{ current_year }}"
-                 onclick="handleMonthClick(this)">
-                <div class="month-header">Tháng {{ month }}</div>
-                <div class="payment-status">
-                    {% if month in paid_months %}
-                        <i class="status-icon">✅</i>
-                        <span class="status-text">Đã nộp</span>
-                        <div class="payment-info">
-                            <span class="amount">{{ "{:,.0f}".format(paid_months[month].amount) }}đ</span>
-                            <span class="paid-date">{{ paid_months[month].paid_date.strftime('%d/%m/%Y') }}</span>
-                            {% if paid_months[month].note %}
-                            <span class="note">{{ paid_months[month].note }}</span>
+                {% set payment = paid_months.get(month) %}
+                {% set month_start = current_year|string + '-' + '%02d'|format(month) + '-01' %}
+                {% if month_start >= student.start_date.strftime('%Y-%m-%d') %}
+                    <div class="month-card {% if payment %}paid{% else %}unpaid{% endif %}">
+                        <div class="month-header">
+                            <h3>Tháng {{ month }}</h3>
+                            {% if payment %}
+                                <span class="status-badge paid">Đã nộp</span>
+                            {% else %}
+                                <span class="status-badge unpaid">Chưa nộp</span>
                             {% endif %}
                         </div>
-                    {% else %}
-                        <i class="status-icon">❌</i>
-                        <span class="status-text">Chưa nộp</span>
-                    {% endif %}
-                </div>
-            </div>
+                        
+                        {% if payment %}
+                            <div class="payment-info">
+                                <div class="amount">{{ "{:,.0f}".format(payment.amount) }}đ</div>
+                                <div class="paid-date">Ngày nộp: {{ payment.paid_date.strftime('%d/%m/%Y') }}</div>
+                                {% if payment.note %}
+                                    <div class="note">Ghi chú: {{ payment.note }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        <button onclick="togglePayment({{ month }})" class="btn-toggle">
+                            {% if payment %}
+                                <i>✏️</i> Sửa
+                            {% else %}
+                                <i>💰</i> Nộp học phí
+                            {% endif %}
+                        </button>
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
     </div>
+</div>
 
-    <!-- Modal nhập/sửa thông tin học phí -->
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <h3>
-                <i>💰</i>
-                <span id="modalTitle">Nhập thông tin học phí</span>
-            </h3>
-            <form id="paymentForm" onsubmit="handleSubmit(event)">
-                <div class="form-group">
-                    <label for="amount">Số tiền</label>
-                    <div class="amount-input-wrapper">
-                        <input type="text" 
-                               id="amount" 
-                               name="amount" 
-                               required 
-                               pattern="[0-9,]*"
-                               oninput="formatAmount(this)"
-                               placeholder="Ví dụ: 1,000,000">
-                        <span class="currency-symbol">đ</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="note">Ghi chú</label>
-                    <textarea id="note" name="note" rows="3"></textarea>
-                </div>
-                <div class="payment-info-display">
-                    <p id="lastUpdated"></p>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closePaymentModal()">Hủy</button>
-                    <button type="submit" class="btn-save">Lưu thay đổi</button>
-                    <button type="button" id="deleteButton" class="btn-delete" onclick="showDeleteConfirm()" style="display: none;">Xóa</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal xác nhận xóa -->
-    <div id="deleteConfirmModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <h3 style="margin-bottom: 20px;">
-                <i>⚠️</i>
-                Xác nhận xóa
-            </h3>
-            <p>Bạn có chắc chắn muốn xóa thông tin học phí này?</p>
-            <div class="modal-actions" style="margin-top: 20px;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteConfirm()">Hủy</button>
-                <button type="button" class="btn-delete" onclick="confirmDelete()">Xóa</button>
+<!-- Modal nộp học phí -->
+<div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <h2>
+            <i>💰</i>
+            <span id="modalTitle">Nộp học phí</span>
+        </h2>
+        
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="amount">Số tiền:</label>
+                <input type="number" id="amount" min="0" step="1000">
             </div>
+            <div class="form-group">
+                <label for="note">Ghi chú:</label>
+                <textarea id="note" rows="3"></textarea>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button onclick="closePaymentModal()" class="btn-cancel">Hủy</button>
+            <button onclick="submitPayment()" class="btn-submit">
+                <i>💾</i>
+                <span>Lưu</span>
+            </button>
         </div>
     </div>
 </div>
 
 <style>
-/* ... existing styles ... */
+.tuition-page {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.tuition-header {
+    margin-bottom: 32px;
+}
+
+.tuition-header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.tuition-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    background: #e5e7eb;
+}
+
+.student-info {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    color: #6b7280;
+}
+
+.student-info span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-header {
+    margin-bottom: 24px;
+}
+
+.year-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.year-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.year-nav-btn:hover {
+    background: #e5e7eb;
+}
+
+.current-year {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.months-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.month-card {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+}
+
+.month-card.paid {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.month-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #1f2937;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-badge.paid {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-badge.unpaid {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.payment-info {
+    margin: 12px 0;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+}
+
+.amount {
+    font-size: 20px;
+    font-weight: 600;
+    color: #15803d;
+    margin-bottom: 8px;
+}
+
+.paid-date {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.note {
+    font-size: 14px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.btn-toggle {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    background: #4f46e5;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-toggle:hover {
+    background: #4338ca;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
 
 .modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
-    width: 90%;
-    position: relative;
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.btn-delete {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
+.modal-content h2 {
+    margin: 0 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #1f2937;
 }
 
-.btn-delete:hover {
-    background-color: #c82333;
+.modal-body {
+    margin-bottom: 24px;
 }
 
-.btn-cancel {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-right: 8px;
+.form-group {
+    margin-bottom: 16px;
 }
 
-.btn-cancel:hover {
-    background-color: #5a6268;
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
 }
 
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 12px;
 }
 
-.year-navigation {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 24px;
-    margin-bottom: 24px;
-}
-
-.year-nav-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+.btn-cancel,
+.btn-submit {
     padding: 8px 16px;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    color: #4b5563;
+    border: none;
+    border-radius: 6px;
     font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s;
-    min-height: 44px;
-    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.year-nav-btn:hover {
-    border-color: #4f46e5;
-    color: #4f46e5;
-    transform: translateX(-4px);
-}
-
-.year-nav-btn:last-child:hover {
-    transform: translateX(4px);
-}
-
-.current-year {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #1f2937;
-    padding: 8px 24px;
+.btn-cancel {
     background: #f3f4f6;
-    border-radius: 8px;
-    min-width: 120px;
-    text-align: center;
+    color: #4b5563;
 }
 
-@media (max-width: 640px) {
-    .year-navigation {
-        gap: 12px;
+.btn-submit {
+    background: #4f46e5;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-submit:hover {
+    background: #4338ca;
+}
+
+@media (max-width: 768px) {
+    .tuition-page {
+        padding: 16px;
     }
     
-    .year-nav-btn {
-        padding: 8px 12px;
-        font-size: 0.9rem;
+    .months-grid {
+        grid-template-columns: 1fr;
     }
     
-    .current-year {
-        font-size: 1.1rem;
-        padding: 8px 16px;
+    .modal-content {
+        margin: 16px;
     }
 }
 </style>
 
 <script>
 let selectedMonth = null;
-let selectedYear = null;
-let isEditing = false;
 
-function formatAmount(input) {
-    // Xóa tất cả ký tự không phải số
-    let value = input.value.replace(/[^0-9]/g, '');
-    
-    // Format số với dấu phẩy
-    if (value) {
-        value = parseInt(value).toLocaleString('en-US');
-    }
-    
-    input.value = value;
-}
-
-function handleMonthClick(monthElement) {
-    const month = monthElement.dataset.month;
-    const year = monthElement.dataset.year;
+function togglePayment(month) {
     selectedMonth = month;
-    selectedYear = year;
-    
-    if (monthElement.classList.contains('paid')) {
-        // Nếu đã nộp, hiện modal với thông tin hiện tại
-        showEditModal(monthElement);
-    } else {
-        // Nếu chưa nộp, hiện modal nhập mới
-        showNewPaymentModal();
-    }
-}
-
-function showEditModal(monthElement) {
     const modal = document.getElementById('paymentModal');
     const modalTitle = document.getElementById('modalTitle');
     const amountInput = document.getElementById('amount');
     const noteInput = document.getElementById('note');
-    const lastUpdated = document.getElementById('lastUpdated');
-    const deleteButton = document.getElementById('deleteButton');
     
-    modalTitle.textContent = `Sửa thông tin học phí - Tháng ${selectedMonth}`;
+    // Reset form
+    amountInput.value = '';
+    noteInput.value = '';
     
-    // Lấy thông tin hiện tại từ card
-    const paymentInfo = monthElement.querySelector('.payment-info');
-    const amount = paymentInfo.querySelector('.amount').textContent.replace('đ', '').trim();
-    const note = paymentInfo.querySelector('.note')?.textContent || '';
-    const paidDate = paymentInfo.querySelector('.paid-date').textContent;
+    // Get existing payment data if any
+    const monthCard = document.querySelector(`.month-card:nth-child(${month})`);
+    if (monthCard && monthCard.classList.contains('paid')) {
+        const amountText = monthCard.querySelector('.amount').textContent;
+        const noteText = monthCard.querySelector('.note')?.textContent.replace('Ghi chú: ', '') || '';
+        
+        amountInput.value = parseFloat(amountText.replace(/[^\d]/g, ''));
+        noteInput.value = noteText;
+        modalTitle.textContent = 'Sửa thông tin học phí';
+    } else {
+        modalTitle.textContent = 'Nộp học phí';
+    }
     
-    amountInput.value = amount;
-    noteInput.value = note;
-    lastUpdated.textContent = `Cập nhật lần cuối: ${paidDate}`;
-    deleteButton.style.display = 'inline-block';
-    
-    isEditing = true;
     modal.style.display = 'flex';
-}
-
-function showNewPaymentModal() {
-    const modal = document.getElementById('paymentModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const form = document.getElementById('paymentForm');
-    const lastUpdated = document.getElementById('lastUpdated');
-    const deleteButton = document.getElementById('deleteButton');
-    
-    modalTitle.textContent = `Nhập thông tin học phí - Tháng ${selectedMonth}`;
-    form.reset();
-    lastUpdated.textContent = '';
-    deleteButton.style.display = 'none';
-    
-    isEditing = false;
-    modal.style.display = 'flex';
-    document.getElementById('amount').focus();
 }
 
 function closePaymentModal() {
     const modal = document.getElementById('paymentModal');
     modal.style.display = 'none';
-    document.getElementById('paymentForm').reset();
+    selectedMonth = null;
 }
 
-function handleSubmit(e) {
-    e.preventDefault();
-    const amountStr = document.getElementById('amount').value;
-    const amount = parseFloat(amountStr.replace(/,/g, ''));
+function submitPayment() {
+    const amount = document.getElementById('amount').value;
     const note = document.getElementById('note').value;
     
-    if (isNaN(amount) || amount <= 0) {
-        alert('Vui lòng nhập số tiền hợp lệ');
+    if (!amount) {
+        alert('Vui lòng nhập số tiền!');
         return;
     }
     
-    updatePayment(selectedMonth, selectedYear, amount, note);
-    closePaymentModal();
-}
-
-function showDeleteConfirm() {
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    deleteModal.style.display = 'flex';
-}
-
-function closeDeleteConfirm() {
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    deleteModal.style.display = 'none';
-}
-
-function confirmDelete() {
-    updatePayment(selectedMonth, selectedYear);
-    closeDeleteConfirm();
-    closePaymentModal();
-}
-
-function updatePayment(month, year, amount = 0, note = '') {
     fetch(`/student/{{ student.id }}/tuition/toggle`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ month, year, amount, note })
+        body: JSON.stringify({
+            month: selectedMonth,
+            year: {{ current_year }},
+            amount: parseFloat(amount),
+            note: note
+        }),
     })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.message || 'Có lỗi xảy ra');
-            });
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // Tìm card tháng cần cập nhật
-            const monthCard = document.querySelector(`.month-card[data-month="${month}"][data-year="${year}"]`);
-            const paymentStatus = monthCard.querySelector('.payment-status');
-            
-            if (amount > 0) {
-                // Cập nhật UI khi thêm/sửa thanh toán
-                monthCard.classList.add('paid');
-                paymentStatus.innerHTML = `
-                    <i class="status-icon">✅</i>
-                    <span class="status-text">Đã nộp</span>
-                    <div class="payment-info">
-                        <span class="amount">${data.data.amount}đ</span>
-                        <span class="paid-date">${data.data.paid_date}</span>
-                        ${data.data.note ? `<span class="note">${data.data.note}</span>` : ''}
-                    </div>
-                `;
-            } else {
-                // Cập nhật UI khi xóa thanh toán
-                monthCard.classList.remove('paid');
-                paymentStatus.innerHTML = `
-                    <i class="status-icon">❌</i>
-                    <span class="status-text">Chưa nộp</span>
-                `;
-            }
-            closePaymentModal();
+            location.reload();
         } else {
-            throw new Error(data.message || 'Có lỗi xảy ra');
+            alert(data.message);
         }
     })
     .catch(error => {
-        alert(error.message || 'Có lỗi xảy ra khi cập nhật trạng thái thanh toán');
         console.error('Error:', error);
+        alert('Có lỗi xảy ra khi lưu thông tin!');
     });
 }
 
 // Đóng modal khi click ra ngoài
 window.onclick = function(event) {
-    const paymentModal = document.getElementById('paymentModal');
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    if (event.target == paymentModal) {
+    const modal = document.getElementById('paymentModal');
+    if (event.target == modal) {
         closePaymentModal();
-    }
-    if (event.target == deleteModal) {
-        closeDeleteConfirm();
     }
 }
 </script>

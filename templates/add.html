@@ -2,9 +2,16 @@
 {% block title %}Thêm học sinh{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">➕ Thêm học sinh</h1>
+<!-- Thêm CSS của Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_blue.css">
 
-<form action="{{ url_for('add_student') }}" method="post" class="student-form">
+<h1 class="text-2xl font-bold mb-6">
+    <span class="icon">➕</span>
+    Thêm học sinh
+</h1>
+
+<form action="{{ url_for('add_student') }}" method="post" class="student-form" id="addStudentForm">
     <div class="form-grid">
         <div class="form-group">
             <label for="name">Họ và tên</label>
@@ -20,7 +27,11 @@
         </div>
         <div class="form-group">
             <label for="age">Tuổi</label>
-            <input type="number" id="age" name="age" required min="6" max="15">
+            <input type="number" id="age" name="age" required min="6" max="15" onchange="updateBirthYear()">
+        </div>
+        <div class="form-group">
+            <label for="birth_year">Năm sinh</label>
+            <input type="number" id="birth_year" name="birth_year" required readonly>
         </div>
         <div class="form-group">
             <label for="grade">Lớp</label>
@@ -34,6 +45,11 @@
         <div class="form-group">
             <label for="school">Trường</label>
             <input type="text" id="school" name="school" required>
+        </div>
+        <div class="form-group">
+            <label for="start_date">Ngày bắt đầu học</label>
+            <input type="text" id="start_date_display" placeholder="dd/mm/yyyy" required>
+            <input type="hidden" id="start_date" name="start_date">
         </div>
         <div class="form-group">
             <label for="address">Địa chỉ</label>
@@ -62,4 +78,80 @@
     </div>
     <button type="submit">Lưu học sinh</button>
 </form>
+
+<!-- Thêm Flatpickr và ngôn ngữ tiếng Việt -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
+<script>
+// Cấu hình Flatpickr với tiếng Việt
+flatpickr("#start_date_display", {
+    dateFormat: "d/m/Y",
+    locale: "vn",
+    allowInput: true,
+    defaultDate: new Date(),
+    onChange: function(selectedDates, dateStr) {
+        // Chuyển đổi sang định dạng yyyy-mm-dd cho input ẩn
+        const date = selectedDates[0];
+        if (date) {
+            const isoDate = date.toISOString().split('T')[0];
+            document.getElementById('start_date').value = isoDate;
+        }
+    }
+});
+
+// Set giá trị mặc định cho input ẩn
+document.getElementById('start_date').value = new Date().toISOString().split('T')[0];
+
+// Tự động tính năm sinh khi nhập tuổi
+function updateBirthYear() {
+    const age = document.getElementById('age').value;
+    if (age) {
+        const currentYear = new Date().getFullYear();
+        document.getElementById('birth_year').value = currentYear - age;
+    }
+}
+
+// Xử lý form submit
+document.getElementById('addStudentForm').addEventListener('submit', function(e) {
+    const startDate = document.getElementById('start_date').value;
+    if (!startDate) {
+        e.preventDefault();
+        alert('Vui lòng chọn ngày bắt đầu học');
+    }
+});
+</script>
+
+<style>
+/* Tùy chỉnh style cho date picker */
+.flatpickr-calendar {
+    font-size: 14px;
+}
+
+.flatpickr-current-month {
+    font-size: 16px;
+}
+
+.flatpickr-day {
+    border-radius: 4px;
+}
+
+.flatpickr-day.selected {
+    background: #4f46e5;
+    border-color: #4f46e5;
+}
+
+.flatpickr-day:hover {
+    background: #e5e7eb;
+}
+
+.flatpickr-day.today {
+    border-color: #4f46e5;
+}
+
+.icon {
+    display: inline-block;
+}
+</style>
+
 {% endblock %}

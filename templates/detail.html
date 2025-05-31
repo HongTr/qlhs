@@ -9,15 +9,15 @@
 
     <div class="action-buttons">
         <a href="{{ url_for('index') }}" class="btn btn-back">
-            <i>⬅️</i>
+            <span class="icon">⬅️</span>
             Quay lại
         </a>
         <a href="{{ url_for('tuition_calendar', id=student.id) }}" class="btn btn-tuition">
-            <i>💰</i>
+            <span class="icon">💰</span>
             Quản lý học phí
         </a>
         <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
-            <i>✏️</i>
+            <span class="icon">✏️</span>
             Sửa thông tin
         </a>
     </div>
@@ -34,6 +34,10 @@
         <div class="info-group">
             <label>Tuổi:</label>
             <span>{{ student.age }}</span>
+        </div>
+        <div class="info-group">
+            <label>Năm sinh:</label>
+            <span>{{ student.birth_year }}</span>
         </div>
         <div class="info-group">
             <label>Lớp:</label>
@@ -67,6 +71,14 @@
             <label>SĐT mẹ:</label>
             <span>{{ student.mother_phone }}</span>
         </div>
+        <div class="info-group">
+            <label>Ngày vào học:</label>
+            <span>{{ student.start_date.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <div class="info-group">
+            <label>Ngày thêm vào hệ thống:</label>
+            <span>{{ student.created_at.strftime('%d/%m/%Y') }}</span>
+        </div>
     </div>
 
     <div class="bottom-actions">
@@ -75,7 +87,7 @@
               onsubmit="return confirm('Bạn có chắc chắn muốn xóa học sinh này?')"
               class="delete-form">
             <button type="submit" class="btn btn-delete">
-                <i>️</i>
+                <span class="icon">🗑️</span>
                 <span>Xóa học sinh</span>
             </button>
         </form>
@@ -104,7 +116,7 @@
     flex-direction: column;
     gap: 12px;
     margin-bottom: 30px;
-    max-width: 800px;
+    max-width: 400px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -113,23 +125,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 44px;
-    padding: 0 20px;
+    height: 48px;
+    padding: 0 24px;
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
     text-decoration: none;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s;
     width: 100%;
 }
 
-.btn i {
-    margin-right: 8px;
-    font-style: normal;
-    font-size: 18px;
+.btn span.icon {
+    display: inline-block;
+    margin-right: 12px;
 }
 
 .btn-back {
@@ -139,19 +149,6 @@
 
 .btn-back:hover {
     background-color: #5a6268;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-}
-
-.btn-edit {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-edit:hover {
-    background-color: #0056b3;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 .btn-tuition {
@@ -161,8 +158,15 @@
 
 .btn-tuition:hover {
     background-color: #218838;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-edit {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #0056b3;
 }
 
 .btn-delete {
@@ -241,28 +245,13 @@
     width: 100%;
 }
 
-@media (min-width: 768px) {
-    .action-buttons {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .btn-group:first-child {
-        flex: 0 0 auto;
-    }
-
-    .btn-group:last-child {
-        flex: 1;
-    }
-}
-
 @media (max-width: 768px) {
-    .btn-group {
-        flex-direction: column;
+    .student-detail {
+        padding: 16px;
     }
     
-    .btn {
-        width: 100%;
+    .action-buttons {
+        max-width: 100%;
     }
 }
 </style>

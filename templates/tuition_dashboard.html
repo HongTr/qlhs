@@ -1,10 +1,10 @@
 {% extends 'layout.html' %}
-{% block title %}Tổng quan học phí{% endblock %}
+{% block title %}Quản lý học phí{% endblock %}
 
 {% block content %}
 <div class="dashboard">
     <div class="dashboard-header">
-        <h1>📊 Tổng quan học phí</h1>
+        <h1>📊 Thống kê học phí</h1>
         
         <div class="filter-section">
             <!-- Bộ lọc thời gian -->
@@ -13,7 +13,7 @@
                     <label for="month-filter">Tháng:</label>
                     <select id="month-filter" onchange="applyFilters()">
                         {% for m in range(1, 13) %}
-                        <option value="{{ m }}" {% if month == m %}selected{% endif %}>
+                        <option value="{{ m }}" {% if current_month == m %}selected{% endif %}>
                             Tháng {{ m }}
                         </option>
                         {% endfor %}
@@ -22,15 +22,15 @@
                 <div class="filter-group">
                     <label for="year-filter">Năm:</label>
                     <select id="year-filter" onchange="applyFilters()">
-                        {% for y in range(year-2, year+3) %}
-                        <option value="{{ y }}" {% if year == y %}selected{% endif %}>
+                        {% for y in range(current_year - 2, current_year + 3) %}
+                        <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>
                             {{ y }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-
+            
             <!-- Bộ lọc học sinh -->
             <div class="student-filter">
                 <div class="filter-group">
@@ -59,33 +59,33 @@
         </div>
     </div>
 
-    <!-- Thống kê tổng quan -->
+    <!-- Thống kê -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon">👥</div>
             <div class="stat-content">
-                <div class="stat-value">{{ stats.total_students }}</div>
+                <div class="stat-value">{{ total_students }}</div>
                 <div class="stat-label">Tổng số học sinh</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">✅</div>
             <div class="stat-content">
-                <div class="stat-value">{{ stats.paid_students }}</div>
-                <div class="stat-label">Đã nộp</div>
+                <div class="stat-value">{{ paid_students }}</div>
+                <div class="stat-label">Đã nộp học phí</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">❌</div>
             <div class="stat-content">
-                <div class="stat-value">{{ stats.unpaid_students }}</div>
-                <div class="stat-label">Chưa nộp</div>
+                <div class="stat-value">{{ unpaid_students }}</div>
+                <div class="stat-label">Chưa nộp học phí</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">💰</div>
             <div class="stat-content">
-                <div class="stat-value">{{ "{:,.0f}".format(stats.total_amount) }}đ</div>
+                <div class="stat-value">{{ "{:,.0f}".format(total_amount) }}đ</div>
                 <div class="stat-label">Tổng thu</div>
             </div>
         </div>
