@@ -3,6 +3,7 @@ from models import db, Student, TuitionPayment   # <-- import từ models.py
 import os
 from flask_migrate import Migrate
 from datetime import datetime
+from sqlalchemy import func, and_
 
 app = Flask(__name__, instance_relative_config=True)
 
@@ -246,6 +247,67 @@ def toggle_tuition_payment(id):
             'status': 'error',
             'message': 'Có lỗi xảy ra: ' + str(e)
         }), 500
+
+@app.route('/tuition-dashboard')
+def tuition_dashboard():
+    # Lấy năm từ query parameter, mặc định là năm hiện tại
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    
+    # Lấy danh sách các trường và lớp để filter
+    schools = db.session.query(Student.school).distinct().order_by(Student.school).all()
+    schools = [school[0] for school in schools]
+    all_grades = get_all_grades()
+    
+    # Lấy các tham số filter
+    selected_grade = request.args.get('grade')
+    selected_school = request.args.get('school')
+    
+    # Query cơ bản cho học sinh
+    student_query = Student.query
+    
+    # Áp dụng các filter
+    if selected_grade and selected_grade.isdigit():
+        student_query = student_query.filter_by(grade=selected_grade)
+    if selected_school:
+        student_query = student_query.filter_by(school=selected_school)
+    
+    # Lấy tất cả học sinh theo filter
+    students = student_query.all()
+    
+    # Lấy thông tin thanh toán của tháng và năm đã chọn
+    payments = TuitionPayment.query.filter(
+        and_(
+            TuitionPayment.student_id.in_([s.id for s in students]),
+            TuitionPayment.year == year,
+            TuitionPayment.month == month
+        )
+    ).all()
+    
+    # Tạo dictionary để dễ dàng kiểm tra thanh toán
+    payment_dict = {payment.student_id: payment for payment in payments}
+    
+    # Tính toán thống kê
+    total_students = len(students)
+    paid_students = len(payments)
+    unpaid_students = total_students - paid_students
+    total_amount = sum(payment.amount for payment in payments)
+    
+    return render_template('tuition_dashboard.html',
+                         year=year,
+                         month=month,
+                         students=students,
+                         payment_dict=payment_dict,
+                         schools=schools,
+                         grades=all_grades,
+                         selected_grade=selected_grade,
+                         selected_school=selected_school,
+                         stats={
+                             'total_students': total_students,
+                             'paid_students': paid_students,
+                             'unpaid_students': unpaid_students,
+                             'total_amount': total_amount
+                         })
 
 if __name__ == '__main__':
     app.run(debug=True)

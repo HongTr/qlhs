@@ -8,20 +8,18 @@
     </div>
 
     <div class="action-buttons">
-        <div class="btn-group">
-            <a href="{{ url_for('index') }}" class="btn btn-back">
-                <i>⬅️</i>
-                Quay lại
-            </a>
-            <a href="{{ url_for('tuition_calendar', id=student.id) }}" class="btn btn-tuition">
-                <i>💰</i>
-                Quản lý học phí
-            </a>
-            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
-                <i>✏️</i>
-                Sửa thông tin
-            </a>
-        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-back">
+            <i>⬅️</i>
+            Quay lại
+        </a>
+        <a href="{{ url_for('tuition_calendar', id=student.id) }}" class="btn btn-tuition">
+            <i>💰</i>
+            Quản lý học phí
+        </a>
+        <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-edit">
+            <i>✏️</i>
+            Sửa thông tin
+        </a>
     </div>
 
     <div class="info-grid">
@@ -103,28 +101,16 @@
 
 .action-buttons {
     display: flex;
+    flex-direction: column;
     gap: 12px;
     margin-bottom: 30px;
-}
-
-.btn-group {
-    display: flex;
-    gap: 12px;
-}
-
-.btn-group:first-child .btn {
-    width: auto;
-    min-width: 120px;
-}
-
-.btn-group:last-child {
-    display: flex;
-    gap: 12px;
-    flex: 1;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     height: 44px;
@@ -137,7 +123,7 @@
     text-decoration: none;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
+    width: 100%;
 }
 
 .btn i {
@@ -267,6 +253,16 @@
 
     .btn-group:last-child {
         flex: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
     }
 }
 </style>

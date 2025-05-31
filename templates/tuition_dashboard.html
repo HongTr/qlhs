@@ -1,0 +1,358 @@
+{% extends 'layout.html' %}
+{% block title %}Tổng quan học phí{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>📊 Tổng quan học phí</h1>
+        
+        <div class="filter-section">
+            <!-- Bộ lọc thời gian -->
+            <div class="time-filter">
+                <div class="filter-group">
+                    <label for="month-filter">Tháng:</label>
+                    <select id="month-filter" onchange="applyFilters()">
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if month == m %}selected{% endif %}>
+                            Tháng {{ m }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="year-filter">Năm:</label>
+                    <select id="year-filter" onchange="applyFilters()">
+                        {% for y in range(year-2, year+3) %}
+                        <option value="{{ y }}" {% if year == y %}selected{% endif %}>
+                            {{ y }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Bộ lọc học sinh -->
+            <div class="student-filter">
+                <div class="filter-group">
+                    <label for="grade-filter">Khối lớp:</label>
+                    <select id="grade-filter" onchange="applyFilters()">
+                        <option value="">Tất cả</option>
+                        {% for grade in grades %}
+                        <option value="{{ grade }}" {% if selected_grade == grade|string %}selected{% endif %}>
+                            Lớp {{ grade }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="school-filter">Trường:</label>
+                    <select id="school-filter" onchange="applyFilters()">
+                        <option value="">Tất cả</option>
+                        {% for school in schools %}
+                        <option value="{{ school }}" {% if selected_school == school %}selected{% endif %}>
+                            {{ school }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thống kê tổng quan -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_students }}</div>
+                <div class="stat-label">Tổng số học sinh</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.paid_students }}</div>
+                <div class="stat-label">Đã nộp</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.unpaid_students }}</div>
+                <div class="stat-label">Chưa nộp</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ "{:,.0f}".format(stats.total_amount) }}đ</div>
+                <div class="stat-label">Tổng thu</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách học sinh -->
+    <div class="student-table-wrapper">
+        <table class="student-table">
+            <thead>
+                <tr>
+                    <th>Họ tên</th>
+                    <th>Lớp</th>
+                    <th>Trường</th>
+                    <th>Trạng thái</th>
+                    <th>Số tiền</th>
+                    <th>Ngày nộp</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr class="{{ 'paid' if student.id in payment_dict else 'unpaid' }}">
+                    <td>
+                        <a href="{{ url_for('student_detail', id=student.id) }}" class="student-link">
+                            {{ student.name }}
+                        </a>
+                    </td>
+                    <td>{{ student.grade }}</td>
+                    <td>{{ student.school }}</td>
+                    {% if student.id in payment_dict %}
+                        {% set payment = payment_dict[student.id] %}
+                        <td class="status paid">Đã nộp</td>
+                        <td class="amount">{{ "{:,.0f}".format(payment.amount) }}đ</td>
+                        <td>{{ payment.paid_date.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ payment.note or '' }}</td>
+                    {% else %}
+                        <td class="status unpaid">Chưa nộp</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.dashboard {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    margin-bottom: 32px;
+}
+
+.dashboard-header h1 {
+    font-size: 24px;
+    color: #1f2937;
+    margin-bottom: 24px;
+}
+
+.filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-filter,
+.student-filter {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.filter-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background-color: white;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-icon {
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.2;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.student-table-wrapper {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+}
+
+.student-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.student-table th {
+    background: #f9fafb;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: #4b5563;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.student-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.student-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.student-link:hover {
+    text-decoration: underline;
+}
+
+.status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.status.paid {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status.unpaid {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.amount {
+    font-family: monospace;
+    font-size: 14px;
+}
+
+tr.paid {
+    background-color: #f0fdf4;
+}
+
+tr.unpaid {
+    background-color: #fff;
+}
+
+@media (max-width: 768px) {
+    .filter-section {
+        padding: 16px;
+    }
+
+    .filter-group {
+        min-width: 100%;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .student-table-wrapper {
+        padding: 12px;
+        margin: 0 -20px;
+        border-radius: 0;
+    }
+
+    .student-table th,
+    .student-table td {
+        padding: 8px 12px;
+    }
+}
+</style>
+
+<script>
+function applyFilters() {
+    const month = document.getElementById('month-filter').value;
+    const year = document.getElementById('year-filter').value;
+    const grade = document.getElementById('grade-filter').value;
+    const school = document.getElementById('school-filter').value;
+    
+    const url = new URL(window.location);
+    
+    url.searchParams.set('month', month);
+    url.searchParams.set('year', year);
+    
+    if (grade) {
+        url.searchParams.set('grade', grade);
+    } else {
+        url.searchParams.delete('grade');
+    }
+    
+    if (school) {
+        url.searchParams.set('school', school);
+    } else {
+        url.searchParams.delete('school');
+    }
+    
+    window.location = url;
+}
+</script>
+{% endblock %} 
