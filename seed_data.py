@@ -2,6 +2,8 @@ from app import app, db
 from models import Student, TuitionPayment
 import random
 from datetime import datetime, timedelta
+import sys
+from sqlalchemy.exc import SQLAlchemyError
 
 # Danh sách họ phổ biến
 ho = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý"]
@@ -74,61 +76,106 @@ def tao_hoc_phi():
     """Tạo số tiền học phí ngẫu nhiên"""
     return random.choice([250000, 300000, 350000, 400000])
 
+def kiem_tra_database():
+    """Kiểm tra xem database đã tồn tại và có thể kết nối được không"""
+    try:
+        with app.app_context():
+            # Thử query một bảng
+            Student.query.first()
+            return True
+    except Exception as e:
+        print(f"Lỗi khi kiểm tra database: {str(e)}")
+        return False
+
 def them_du_lieu_mau():
-    with app.app_context():
-        # Xóa dữ liệu cũ
-        TuitionPayment.query.delete()
-        Student.query.delete()
-        db.session.commit()
-        
-        # Thêm học sinh mới
-        for _ in range(50):  # Tạo 50 học sinh
-            # Tạo thông tin cơ bản
-            lop = random.randint(1, 9)
-            gioi_tinh = random.choice(["Nam", "Nữ"])
+    if not kiem_tra_database():
+        print("Không thể kết nối đến database. Hãy chắc chắn rằng:")
+        print("1. Database đã được tạo")
+        print("2. Các bảng đã được tạo (chạy 'flask db upgrade')")
+        print("3. Có quyền truy cập vào database")
+        return
+
+    try:
+        with app.app_context():
+            print("Bắt đầu tạo dữ liệu mẫu...")
             
-            hoc_sinh = Student(
-                name=tao_ten(gioi_tinh),
-                gender=gioi_tinh,
-                age=lay_tuoi_theo_lop(lop),
-                grade=str(lop),
-                school=lay_truong_theo_lop(lop),
-                address=tao_dia_chi(),
-                phone=tao_so_dien_thoai(),
-                father_name=tao_ten("Nam"),
-                father_phone=tao_so_dien_thoai(),
-                mother_name=tao_ten("Nữ"),
-                mother_phone=tao_so_dien_thoai()
-            )
-            db.session.add(hoc_sinh)
-            db.session.commit()  # Commit để lấy ID của học sinh
+            # Xóa dữ liệu cũ
+            print("Đang xóa dữ liệu cũ...")
+            TuitionPayment.query.delete()
+            Student.query.delete()
+            db.session.commit()
+            print("Đã xóa dữ liệu cũ thành công!")
             
-            # Thêm dữ liệu học phí
-            current_date = datetime.now()
-            # Tạo dữ liệu học phí cho 3 tháng gần nhất (không trùng lặp)
-            months_paid = []  # Theo dõi các tháng đã đóng
-            for month_offset in range(3):
-                # 70% xác suất đã đóng học phí
-                if random.random() < 0.7:
-                    payment_date = current_date - timedelta(days=month_offset*30)
-                    month = payment_date.month
-                    year = payment_date.year
+            # Thêm học sinh mới
+            print("Đang tạo dữ liệu học sinh mới...")
+            students_created = 0
+            payments_created = 0
+            
+            for i in range(50):  # Tạo 50 học sinh
+                try:
+                    # Tạo thông tin cơ bản
+                    lop = random.randint(1, 9)
+                    gioi_tinh = random.choice(["Nam", "Nữ"])
                     
-                    # Kiểm tra xem tháng này đã đóng chưa
-                    if (month, year) not in months_paid:
-                        months_paid.append((month, year))
-                        hoc_phi = TuitionPayment(
-                            student_id=hoc_sinh.id,
-                            month=month,
-                            year=year,
-                            amount=tao_hoc_phi(),
-                            paid_date=payment_date,
-                            note=f"Học phí tháng {month}/{year}"
-                        )
-                        db.session.add(hoc_phi)
-                        db.session.commit()  # Commit sau mỗi lần thêm học phí
-        
-        print("Đã thêm dữ liệu mẫu thành công!")
+                    hoc_sinh = Student(
+                        name=tao_ten(gioi_tinh),
+                        gender=gioi_tinh,
+                        age=lay_tuoi_theo_lop(lop),
+                        grade=str(lop),
+                        school=lay_truong_theo_lop(lop),
+                        address=tao_dia_chi(),
+                        phone=tao_so_dien_thoai(),
+                        father_name=tao_ten("Nam"),
+                        father_phone=tao_so_dien_thoai(),
+                        mother_name=tao_ten("Nữ"),
+                        mother_phone=tao_so_dien_thoai()
+                    )
+                    db.session.add(hoc_sinh)
+                    db.session.commit()
+                    students_created += 1
+                    
+                    # Thêm dữ liệu học phí
+                    current_date = datetime.now()
+                    months_paid = []
+                    
+                    for month_offset in range(3):
+                        if random.random() < 0.7:
+                            payment_date = current_date - timedelta(days=month_offset*30)
+                            month = payment_date.month
+                            year = payment_date.year
+                            
+                            if (month, year) not in months_paid:
+                                months_paid.append((month, year))
+                                hoc_phi = TuitionPayment(
+                                    student_id=hoc_sinh.id,
+                                    month=month,
+                                    year=year,
+                                    amount=tao_hoc_phi(),
+                                    paid_date=payment_date,
+                                    note=f"Học phí tháng {month}/{year}"
+                                )
+                                db.session.add(hoc_phi)
+                                db.session.commit()
+                                payments_created += 1
+                    
+                    # In tiến độ
+                    print(f"Đã tạo {students_created}/50 học sinh và {payments_created} bản ghi học phí", end='\r')
+                    
+                except SQLAlchemyError as e:
+                    print(f"\nLỗi khi tạo học sinh thứ {i+1}: {str(e)}")
+                    db.session.rollback()
+                    continue
+            
+            print(f"\nHoàn thành! Đã tạo:")
+            print(f"- {students_created} học sinh")
+            print(f"- {payments_created} bản ghi học phí")
+            
+    except Exception as e:
+        print(f"Lỗi không mong muốn: {str(e)}")
+        db.session.rollback()
+        sys.exit(1)
+    finally:
+        db.session.close()
 
 if __name__ == "__main__":
     them_du_lieu_mau() 
