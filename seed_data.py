@@ -65,6 +65,11 @@ def lay_tuoi_theo_lop(lop):
     """Lấy tuổi phù hợp theo lớp"""
     return lop + 5  # Ví dụ: Lớp 1 -> 6 tuổi, Lớp 2 -> 7 tuổi, ...
 
+def lay_nam_sinh_theo_tuoi(tuoi):
+    """Tính năm sinh dựa trên tuổi"""
+    nam_hien_tai = datetime.now().year
+    return nam_hien_tai - tuoi
+
 def lay_truong_theo_lop(lop):
     """Lấy trường phù hợp theo cấp học"""
     if 1 <= lop <= 5:  # Tiểu học
@@ -116,11 +121,14 @@ def them_du_lieu_mau():
                     # Tạo thông tin cơ bản
                     lop = random.randint(1, 9)
                     gioi_tinh = random.choice(["Nam", "Nữ"])
+                    tuoi = lay_tuoi_theo_lop(lop)
+                    nam_sinh = lay_nam_sinh_theo_tuoi(tuoi)
                     
                     hoc_sinh = Student(
                         name=tao_ten(gioi_tinh),
                         gender=gioi_tinh,
-                        age=lay_tuoi_theo_lop(lop),
+                        age=tuoi,
+                        birth_year=nam_sinh,
                         grade=str(lop),
                         school=lay_truong_theo_lop(lop),
                         address=tao_dia_chi(),
